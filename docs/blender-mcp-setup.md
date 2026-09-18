@@ -14,14 +14,14 @@ That means the server must be able to reach the machine Blender is running on.
 Running Claude Code **locally** in this repo, everything is on one machine and
 `.mcp.json` works as-is. Running Claude Code **on the web**, the session lives in
 a cloud container and `localhost` is that container, not your desktop — it has no
-Blender to connect to, so the Blender tools will not appear.
+Blender to connect to, so the Blender tools will fail to connect.
 
 > The addon executes arbitrary Python sent over that socket and has no
 > authentication. Do not port-forward `9876` to the public internet to bridge a
 > cloud session to your desktop.
 
-For web sessions, build scenes with the scripts in `blender/` instead and run
-them locally.
+In a web session, have Claude write Blender Python to a file in this repo and
+run it locally with `blender --python <script>` instead.
 
 ## One-time setup (on your machine)
 
@@ -35,6 +35,8 @@ them locally.
    `BLENDERMCP_ADDONS_DIR` to your Blender `scripts/addons` path and rerun, or
    download `addon.py` from the repo and use
    **Edit → Preferences → Add-ons → Install…**
+
+   Run `uvx mcp-for-blender addon-paths` to see which directories it checks.
 
 2. In Blender, go to **Edit → Preferences → Add-ons**, search for
    **Interface: MCP for Blender**, and enable it.
@@ -50,6 +52,34 @@ them locally.
 
 Check the connection by asking Claude to describe the current scene.
 
-## Overrides
+## Environment variables
 
-`BLENDER_HOST` and `BLENDER_PORT` override the default `localhost:9876`.
+Set these in the `env` block of the `blender` entry in `.mcp.json`.
+
+| Variable | Effect |
+| --- | --- |
+| `BLENDER_HOST` / `BLENDER_PORT` | Override the default `localhost:9876`. |
+| `BLENDERMCP_ADDONS_DIR` | Blender `scripts/addons` path used by `install-addon`. |
+| `BLENDER_MCP_SAFE_MODE` | Set to `1` to validate Python before Blender runs it. Off by default. |
+| `BLENDER_MCP_DISABLE_TELEMETRY` | Set to `1` to turn off usage reporting. Reporting is on by default. |
+
+## Telemetry
+
+The server reports usage to a Supabase endpoint run by the upstream maintainer,
+and this is **enabled by default**. Without consent it sends anonymous usage
+data only. Granting consent in the addon panel also sends your prompts, error
+details, and viewport screenshots.
+
+To opt out for everyone using this repo, add the env block to `.mcp.json`:
+
+```json
+{
+  "mcpServers": {
+    "blender": {
+      "command": "uvx",
+      "args": ["mcp-for-blender"],
+      "env": { "BLENDER_MCP_DISABLE_TELEMETRY": "1" }
+    }
+  }
+}
+```
